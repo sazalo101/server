@@ -1,4 +1,4 @@
-// server.js
+require('dotenv').config();
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -11,8 +11,7 @@ app.use(express.json());
 app.use(cors());
 
 const PORT = process.env.PORT || 3001;
-
-const JWT_SECRET = 'your-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 // Set up multer for file uploads
 const storage = multer.diskStorage({
