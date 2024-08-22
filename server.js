@@ -69,11 +69,22 @@ app.post('/employee', authenticateToken, upload.single('photo'), (req, res) => {
   if (req.user.role !== 'admin') {
     return res.sendStatus(403);
   }
-  const { email, password, name, gender, age, address, workEmail, phoneNumbers, contractDuration, skills, specialisation } = req.body;
+  const { 
+    name, gender, age, address, email, workEmail, phoneNumber1, phoneNumber2, 
+    contractDuration, skills, specialisation, password, salary 
+  } = req.body;
   const photoUrl = req.file ? `/uploads/${req.file.filename}` : null;
   
+  if (password.length < 8) {
+    return res.status(400).send('Password must be at least 8 characters long');
+  }
+
   const hashedPassword = bcrypt.hashSync(password, 10);
-  const employee = { email, password: hashedPassword, name, gender, age, address, workEmail, phoneNumbers, contractDuration, skills, specialisation, photoUrl };
+  const employee = { 
+    name, gender, age, address, email, workEmail, phoneNumber1, phoneNumber2, 
+    contractDuration, skills, specialisation, password: hashedPassword, 
+    photoUrl, salary, workHours: {}
+  };
   
   employees.push(employee);
   users.push({ email, password: hashedPassword, role: 'employee' });
@@ -100,14 +111,19 @@ app.post('/schedule', authenticateToken, (req, res) => {
   if (req.user.role !== 'admin') {
     return res.sendStatus(403);
   }
-  const { employeeEmail, scheduleDetails } = req.body;
+  const { employeeEmail, scheduleDetails, clientId } = req.body;
   
   const employee = employees.find(e => e.email === employeeEmail);
-  if (!employee) {
-    return res.status(404).send('Employee not found');
+  const client = clients.find(c => c.socialSecurityNumber === clientId);
+
+  if (!employee || !client) {
+    return res.status(404).send('Employee or client not found');
   }
   
-  schedules.push({ employeeEmail, scheduleDetails });
+  // Here you would implement the scheduling logic based on client preferences
+  // For simplicity, we're just adding the schedule without checks
+
+  schedules.push({ employeeEmail, scheduleDetails, clientId });
   res.status(201).send('Schedule sent');
 });
 
@@ -135,6 +151,27 @@ app.get('/clients', authenticateToken, (req, res) => {
     return res.sendStatus(403);
   }
   res.json(clients);
+});
+
+// Update work hours (employee or admin)
+app.post('/workhours', authenticateToken, (req, res) => {
+  const { employeeEmail, date, hours } = req.body;
+  
+  if (req.user.role !== 'admin' && req.user.email !== employeeEmail) {
+    return res.sendStatus(403);
+  }
+
+  const employee = employees.find(e => e.email === employeeEmail);
+  if (!employee) {
+    return res.status(404).send('Employee not found');
+  }
+
+  if (!employee.workHours) {
+    employee.workHours = {};
+  }
+  employee.workHours[date] = hours;
+
+  res.status(200).send('Work hours updated');
 });
 
 app.listen(PORT, () => {
