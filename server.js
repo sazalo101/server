@@ -34,7 +34,7 @@ let users = [{
   role: 'admin'
 }];
 let employees = [];
-let customers = [];
+let clients = [];
 let schedules = [];
 
 // Middleware to verify JWT token
@@ -69,11 +69,11 @@ app.post('/employee', authenticateToken, upload.single('photo'), (req, res) => {
   if (req.user.role !== 'admin') {
     return res.sendStatus(403);
   }
-  const { email, password, jobTitle, department, phoneNumber, socialSecurityNumber } = req.body;
+  const { email, password, name, gender, age, address, workEmail, phoneNumbers, contractDuration, skills, specialisation } = req.body;
   const photoUrl = req.file ? `/uploads/${req.file.filename}` : null;
   
   const hashedPassword = bcrypt.hashSync(password, 10);
-  const employee = { email, password: hashedPassword, jobTitle, department, phoneNumber, socialSecurityNumber, photoUrl };
+  const employee = { email, password: hashedPassword, name, gender, age, address, workEmail, phoneNumbers, contractDuration, skills, specialisation, photoUrl };
   
   employees.push(employee);
   users.push({ email, password: hashedPassword, role: 'employee' });
@@ -81,18 +81,18 @@ app.post('/employee', authenticateToken, upload.single('photo'), (req, res) => {
   res.status(201).send('Employee profile created');
 });
 
-// Create customer profile (admin only)
-app.post('/customer', authenticateToken, upload.single('photo'), (req, res) => {
+// Create client profile (admin only)
+app.post('/client', authenticateToken, upload.single('photo'), (req, res) => {
   if (req.user.role !== 'admin') {
     return res.sendStatus(403);
   }
-  const { email, phoneNumber } = req.body;
+  const { name, age, address, socialSecurityNumber, servicesNeeded } = req.body;
   const photoUrl = req.file ? `/uploads/${req.file.filename}` : null;
   
-  const customer = { email, phoneNumber, photoUrl };
-  customers.push(customer);
+  const client = { name, age, address, socialSecurityNumber, servicesNeeded, photoUrl };
+  clients.push(client);
   
-  res.status(201).send('Customer profile created');
+  res.status(201).send('Client profile created');
 });
 
 // Send schedule (admin only)
@@ -100,8 +100,14 @@ app.post('/schedule', authenticateToken, (req, res) => {
   if (req.user.role !== 'admin') {
     return res.sendStatus(403);
   }
-  const { department, schedule } = req.body;
-  schedules.push({ department, schedule });
+  const { employeeEmail, scheduleDetails } = req.body;
+  
+  const employee = employees.find(e => e.email === employeeEmail);
+  if (!employee) {
+    return res.status(404).send('Employee not found');
+  }
+  
+  schedules.push({ employeeEmail, scheduleDetails });
   res.status(201).send('Schedule sent');
 });
 
@@ -110,8 +116,8 @@ app.get('/schedule', authenticateToken, (req, res) => {
   if (req.user.role !== 'employee') {
     return res.sendStatus(403);
   }
-  const employee = employees.find(e => e.email === req.user.email);
-  const employeeSchedules = schedules.filter(s => s.department === employee.department);
+  
+  const employeeSchedules = schedules.filter(s => s.employeeEmail === req.user.email);
   res.json(employeeSchedules);
 });
 
@@ -123,12 +129,12 @@ app.get('/employees', authenticateToken, (req, res) => {
   res.json(employees.map(e => ({ ...e, password: undefined })));
 });
 
-// Get all customers (admin only)
-app.get('/customers', authenticateToken, (req, res) => {
+// Get all clients (admin only)
+app.get('/clients', authenticateToken, (req, res) => {
   if (req.user.role !== 'admin') {
     return res.sendStatus(403);
   }
-  res.json(customers);
+  res.json(clients);
 });
 
 app.listen(PORT, () => {
